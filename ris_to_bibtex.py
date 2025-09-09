@@ -14,7 +14,7 @@ def convert_ris_to_bibtex(ris_content):
     # Variables que utilizaremos para almacenar la información de cada entrada
     entry_type = None
     fields = {}
-    type_found = False
+    type_found = False #Bandera para saber si ya hemos encontrado el entry_type
 
     for entry in entries:
         # print(f"Procesando entrada: {entry}")

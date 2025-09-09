@@ -10,44 +10,78 @@ def convert_bibtex_to_ris(bib_content):
     # Dividimos por entradas
     bib_content = bib_content.strip()
     pattern = r"""
-        @([a-zA-Z]+)                      # tipo (ej: @article)
-        \s*\{                             # abre llave
-        \s*([a-zA-Z0-9\-\.\/_]+)\s*,      # ID
-        \s*                               # espacios
+        @([a-zA-Z]+)                      # capturamos el type con group(1)
+        \s*\{                             
+        \s*([a-zA-Z0-9\-\.\/_]+)\s*,      # capturamos el ID con group(2)
+        \s*                               #
 
-        (                                 # inicio de captura de campos
-            (?<field>                     # grupo recursivo llamado "field"
-                [a-zA-Z]+\s*=\s*          # nombre del campo y el "="
+        (                                 
+            (?<entry>                     # grupo recursivo llamado "field"
+                [a-zA-Z]+\s*=\s*          # capturamos el field y el "="
                 (?<braces>                # grupo recursivo para llaves
                     \{                    # abre {
                     (?:                   # contenido:
-                        [^{}]+            #  - texto que no son llaves
-                        |                 #  - o
+                        [^{}]+            #  texto que no son llaves
+                        |                 #  o
                         (?&braces)        #  otro bloque {...}
                     )*
                     \}                    # cierra }
                 )
             )
-            (?:\s*,\s*(?&field))*         # más campos separados por coma
+            (?:\s*,\s*(?&entry))*         # puede haber varios campos separados por comas (excepto el ultimo campo que no tiene ",")
         )
-        \s*\}                             # cierre del registro
+        \s*\}                             #llave que cierra al final
     """
+
+    entry_type = None
+    id = None
+    entries = None
+
+    separated_entries_pattern = r"""
+        (?<field>                     # grupo recursivo llamado "field"
+            ([a-zA-Z]+)\s*=\s*        # capturamos el nombre del field con group(1)
+            (?<braces>                # grupo recursivo para llaves
+                \{                    # abre {
+                ((?:                  # group(2): contenido de las llaves
+                    [^{}]+            #  texto que no son llaves
+                    |                 #  o
+                    (?&braces)        #  otro bloque {...} (recursión)
+                )*)
+                \}                    # cierra }
+            )
+        )
+    """
+
+    separated_entries = {}
 
     match = regex.search(pattern, bib_content, regex.VERBOSE)
     if match:
-        print("Tipo:", match.group(1))
-        print("ID:", match.group(2))
-        print("Campos:", match.group(3))
+        entry_type = match.group(1)
+        id = match.group(2)
+        entries = match.group(3)
 
-    # entries = match.group(3)
+        print(f"Entries: {entries}\n\n")
+
+        field_matches = regex.finditer(separated_entries_pattern, entries, regex.VERBOSE)
+    
+        for match in field_matches:
+            field_name = match.group(2).strip()  # nombre del campo
+            field_value = match.group(3).strip() # contenido entre llaves
+            separated_entries[field_name] = field_value
+
+        print(f"Separated entries: {separated_entries}")
+
+        
+
+    # print(f"Tipo de entrada: {entry_type}")
+    # print(f"ID de la entrada: {id}")
     # print(f"Entradas detectadas: {entries}")
 
     return
 
     # Variables que utilizaremos para almacenar la información de cada entrada
-    entry_type = None
     fields = {}
-    type_found = False
+    type_found = False # Bandera para saber si ya hemos encontrado el entry_type
 
     for entry in entries:
         # print(f"Procesando entrada: {entry}")
