@@ -13,14 +13,13 @@ from ris_to_bibtex import convert_ris_to_bibtex
 def main():
     show_menu()
     
-    # Cargamos equivalencias del CSV
-    field_equivalences, entry_types = load_equivalences()
-    
     while True:
         file_path = select_file()
         
         if not file_path:
             break
+
+        file_path = Path(file_path)
         
         # Verificamos que el archivo existe y es valido
         if not os.path.exists(file_path):
@@ -39,13 +38,13 @@ def main():
         if file_path.suffix.lower() == '.bib':
             print("Convirtiendo BibTeX => RIS.......")
 
-            result = convert_bibtex_to_ris(content, field_equivalences, entry_types)
+            result = convert_bibtex_to_ris(content)
             new_extension = '.ris'
 
         elif file_path.suffix.lower() == '.ris':
             print("Convirtiendo RIS => BibTeX.......")
 
-            result = convert_ris_to_bibtex(content, field_equivalences, entry_types)
+            result = convert_ris_to_bibtex(content)
             new_extension = '.bib'
 
         else:
@@ -71,32 +70,6 @@ def main():
         continue_choice = input("¿Desea convertir otro formato? (s/n)").lower().strip()
         if continue_choice != 's':
             break
-
-def load_equivalences():
-    # Estableciendo diccionarios para las equivalencias
-    field_equivalences = {}  #Ej: author -> AU
-    entry_types = {}        #Ej: @article -> JOUR
-    
-    try:
-        with open("tag_equivalence.csv", 'r', encoding='utf-8') as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                if row['Type'] == 'Field':
-                    # Guardar equivalencia de campo
-                    bibtex_field = row['BibTeX Field']
-                    ris_tag = row['RIS Tag']
-                    field_equivalences[bibtex_field] = ris_tag
-                elif row['Type'] == 'Entry Type':
-                    # Guardar equivalencia de tipo de entrada
-                    bibtex_type = row['BibTeX Field']
-                    ris_type = row['RIS Tag']
-                    entry_types[bibtex_type] = ris_type
-        
-    except FileNotFoundError:
-        print("Error: No se encontró tag_equivalence.csv")
-        sys.exit(1)
-    
-    return field_equivalences, entry_types
 
 
 def show_menu():
@@ -124,15 +97,15 @@ def select_file():
             # Mostrar archivos .bib
             for file in bib_files:
                 all_files.append(file)
-                print(f"{file.name} (BibTeX)")
+                print(f"{len(all_files)} {file.name} (BibTeX)")
             
             # Mostrar archivos .ris
             for file in ris_files:
                 all_files.append(file)
-                print(f"{file.name} (RIS)")
+                print(f"{len(all_files)} {file.name} (RIS)")
             
-            print(f"   {len(all_files) + 1}. Especificar archivo manualmente")
-            print(f"   {len(all_files) + 2}. Salir")
+            print(f"{len(all_files) + 1}. Especificar archivo manualmente")
+            print(f"{len(all_files) + 2}. Salir")
             
             try:
                 choice = int(input(f"\nSelecciona (1-{len(all_files) + 2}): "))
