@@ -2,22 +2,42 @@
 # By: Daniel Vega Miranda
 
 import re
-
+import regex
 
 def convert_bibtex_to_ris(bib_content):
     print("Iniciando conversión de BibTeX a RIS...\n\n")
     
     # Dividimos por entradas
     bib_content = bib_content.strip()
-    match = re.search(r"@([a-zA-Z]+)\s*\n*\s*\{\s*\n*\s*([a-zA-Z0-9\-\.\/\_]*)\s*\n*\s*,\s*\n*\s*((([a-zA-Z]*=\{[^\}]*\})\s*\n*\s*,?\n*\s*\n*)*)\}", bib_content)
+    pattern = r"""
+        @([a-zA-Z]+)                      # tipo (ej: @article)
+        \s*\{                             # abre llave
+        \s*([a-zA-Z0-9\-\.\/_]+)\s*,      # ID
+        \s*                               # espacios
 
-    type = match.group(1).strip().lower()
-    id = match.group(2).strip()
-    entries = match.group(3).strip()
+        (                                 # inicio de captura de campos
+            (?<field>                     # grupo recursivo llamado "field"
+                [a-zA-Z]+\s*=\s*          # nombre del campo y el "="
+                (?<braces>                # grupo recursivo para llaves
+                    \{                    # abre {
+                    (?:                   # contenido:
+                        [^{}]+            #  - texto que no son llaves
+                        |                 #  - o
+                        (?&braces)        #  otro bloque {...}
+                    )*
+                    \}                    # cierra }
+                )
+            )
+            (?:\s*,\s*(?&field))*         # más campos separados por coma
+        )
+        \s*\}                             # cierre del registro
+    """
 
-    print(f"Tipo de entrada detectado: {type}")
-    print(f"ID de la entrada detectado: {id}")
-    print(f"Entradas detectadas: {entries}")
+    match = regex.search(pattern, bib_content, regex.VERBOSE)
+    if match:
+        print("Tipo:", match.group(1))
+        print("ID:", match.group(2))
+        print("Campos:", match.group(3))
 
     # entries = match.group(3)
     # print(f"Entradas detectadas: {entries}")
