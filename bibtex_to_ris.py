@@ -143,7 +143,7 @@ def convert_bibtex_to_ris(bib_content):
             elif len(parts) == 1:
                 cy = parts[0].strip()
         #authors
-        elif field == "author":
+        elif field == "author": #Cada autor en ris va en una línea separada
             authors = re.split(r'\s+and\s+', field_content)
             authors = [a.strip() for a in authors if a.strip()]
             separated_entries[field] = " and ".join(authors)
@@ -178,6 +178,12 @@ def convert_bibtex_to_ris(bib_content):
             clean_content = content.replace('\n', ' ').replace('\r', ' ').strip()
             if clean_content.endswith(','):
                 clean_content = clean_content[:-1].strip()
+            
+            if key == "author" or key == "editor":
+                authors_editors = re.split(r'\s+and\s+', clean_content)
+                for ae in authors_editors:
+                    ris_result += f"{ris_key.upper()}  - {ae.strip()}\n"
+                continue
             ris_result += f"{ris_key.upper()}  - {clean_content}\n"
 
     ris_result += "ER  - \n"
