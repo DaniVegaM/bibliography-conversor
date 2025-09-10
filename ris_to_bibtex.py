@@ -55,6 +55,7 @@ def convert_ris_to_bibtex(ris_content):
     ris_to_bibtex_type = {
         "au" : "author",
         "ti" : "title",
+        "da" : "date",
         "py" : "year",
         "vl" : "volume",
         "is" : "number",
@@ -80,6 +81,24 @@ def convert_ris_to_bibtex(ris_content):
     pages = "" #sp-ep
     keywords = "" #kw
     address = "" #cy, pp
+    day = ""
+    month = ""
+    year = ""
+
+    month_to_letters = {
+        "01": "Jan",
+        "02": "Feb",
+        "03": "Mar",
+        "04": "Apr",
+        "05": "May",
+        "06": "Jun",
+        "07": "Jul",
+        "08": "Aug",
+        "09": "Sep",
+        "10": "Oct",
+        "11": "Nov",
+        "12": "Dec"
+    }
 
     # Formateamos los campos que contienen más de un elemento
     for field, field_content in fields.items():
@@ -100,6 +119,17 @@ def convert_ris_to_bibtex(ris_content):
                 address += f", {field_content}"
             else:
                 address += field_content
+        elif field == "da":
+            date_parts = re.split(r'[\/\-]', field_content)
+            if len(date_parts) == 3:
+                year, month, day = date_parts
+            elif len(date_parts) == 2:
+                year, month = date_parts
+            elif len(date_parts) == 1:
+                year = date_parts[0]
+            
+            month = month_to_letters.get(month.zfill(2), month) # Convertimos el mes a letras si es posible
+
 
     # Construimos el archivo BibTeX
     cite_key = fields.get('id', '')
@@ -116,10 +146,16 @@ def convert_ris_to_bibtex(ris_content):
         bibtex_result += f"keywords = {{{keywords}}},\n"
     if address:
         bibtex_result += f"address = {{{address}}},\n"
+    if len(year) != 0:
+        bibtex_result += f"year = {{{year}}},\n"
+    if len(month) != 0:
+        bibtex_result += f"month = {{{month}}},\n"
+    if len(day) != 0:
+        bibtex_result += f"day = {{{day}}},\n"
 
     # Añadimos todos los demas campos
     for key, content in fields.items():
-        if key in ris_to_bibtex_type and key != "id" and key != "ty" and key != "sp" and key != "ep" and key != "kw" and key != "cy" and key != "pp":
+        if key in ris_to_bibtex_type and key != "id" and key != "ty" and key != "sp" and key != "ep" and key != "kw" and key != "cy" and key != "pp" and key != "da":
             bibtex_key = ris_to_bibtex_type[key]
             bibtex_result += f"{bibtex_key} = {{{content}}},\n"
 

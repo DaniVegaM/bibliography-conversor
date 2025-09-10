@@ -82,6 +82,8 @@ def convert_bibtex_to_ris(bib_content):
         "author": "au",
         "title": "ti",
         "year": "py",
+        "month": "da",
+        "day": "da",
         "volume": "vl",
         "number": "is",
         "pages": "sp",
@@ -108,6 +110,9 @@ def convert_bibtex_to_ris(bib_content):
     kw = []
     cy = ""
     pp = ""
+    year = ""
+    month = ""
+    day = ""
 
     # Formateamos los campos que contienen más de un elemento
     if(entry_type == "inproceedings"):
@@ -152,6 +157,34 @@ def convert_bibtex_to_ris(bib_content):
             editors = re.split(r'\s+and\s+', field_content)
             editors = [e.strip() for e in editors if e.strip()]
             separated_entries[field] = " and ".join(editors)
+        elif field == "year" or field == "month" or field == "day":
+            # Formateamos la fecha en formato YYYY/MM/DD
+            year = separated_entries.get("year", "").strip()
+            month = separated_entries.get("month", "").strip()
+            day = separated_entries.get("day", "").strip()
+
+    month_to_num = {
+        "january": "01", "jan": "01",
+        "february": "02", "feb": "02",
+        "march": "03", "mar": "03",
+        "april": "04", "apr": "04",
+        "may": "05",
+        "june": "06", "jun": "06",
+        "july": "07", "jul": "07",
+        "august": "08", "aug": "08",
+        "september": "09", "sep": "09", "sept": "09",
+        "october": "10", "oct": "10",
+        "november": "11", "nov": "11",
+        "december": "12", "dec": "12"
+    }
+
+    if month:
+        month_lower = month.lower()
+        if month_lower in month_to_num:
+            month = month_to_num[month_lower]
+        elif month.isdigit() and 1 <= int(month) <= 12:
+            month = f"{int(month):02d}"
+
 
     # Construimos el archivo BibTeX
     ris_result = "TY  - " + entry_type + "\n"
@@ -168,10 +201,12 @@ def convert_bibtex_to_ris(bib_content):
         ris_result += f"CY  - {cy}\n"
     if pp:
         ris_result += f"PP  - {pp}\n"
+    if year or month or day:
+        ris_result += f"DA  - {year}/{month}/{day}\n"
 
     # Añadimos todos los demas campos
     for key, content in separated_entries.items():
-        if key in bibtex_to_ris_type and key != "id" and key != "article" and key != "inproceedings" and key != "pages" and key != "keywords" and key != "address":
+        if key in bibtex_to_ris_type and key != "id" and key != "article" and key != "inproceedings" and key != "pages" and key != "keywords" and key != "address" and key != "year" and key != "month" and key != "day":
             ris_key = bibtex_to_ris_type[key]
             
             # Elimina saltos de línea y la coma final
