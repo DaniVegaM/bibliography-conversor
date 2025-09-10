@@ -3,9 +3,12 @@
 
 import re
 
+from colorama import Fore, Style, init
+init(autoreset=True)
+
 
 def convert_ris_to_bibtex(ris_content):
-    print("Iniciando conversión de RIS a BibTeX...\n\n")
+    # print("Iniciando conversión de RIS a BibTeX...\n\n")
     
     # Dividimos por entradas
     ris_content = ris_content.strip()
@@ -41,6 +44,9 @@ def convert_ris_to_bibtex(ris_content):
                     fields[field] += " and " + field_content
                 else:
                     fields[field] = field_content
+            else:
+                print(f"{Fore.YELLOW}Advertencia: Línea no reconocida y será ignorada: {entry}")
+                pass
     
     # print(f"\n\nCampos recopilados:\n\n{fields}")
 
@@ -119,7 +125,7 @@ def convert_ris_to_bibtex(ris_content):
 
     bibtex_result += "}"
 
-    print("\n\nConversión completada. ============================== \n\n")
+    print(f"{Fore.GREEN}\n\nConversión completada. ============================== \n\n")
     # print(bibtex_result)
+
     return bibtex_result
-            

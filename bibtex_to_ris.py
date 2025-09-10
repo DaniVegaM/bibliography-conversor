@@ -4,8 +4,11 @@
 import re
 import regex
 
+from colorama import Fore, Style, init
+init(autoreset=True)
+
 def convert_bibtex_to_ris(bib_content):
-    print("Iniciando conversión de BibTeX a RIS...\n\n")
+    # print("Iniciando conversión de BibTeX a RIS...\n\n")
     
     # Dividimos por entradas
     bib_content = bib_content.strip()
@@ -41,12 +44,12 @@ def convert_bibtex_to_ris(bib_content):
         (?<field>                     # grupo recursivo llamado "field"
             ([a-zA-Z]+)\s*=\s*        # capturamos el nombre del field con group(1)
             (?<braces>                # grupo recursivo para llaves
-                \{                    # abre {
+                \{(                    # abre {
                 ((?:                  # group(2): contenido de las llaves
                     [^{}]+            #  texto que no son llaves
                     |                 #  o
                     (?&braces)        #  otro bloque {...} (recursión)
-                )*)
+                )*))
                 \}                    # cierra }
             )
         )
@@ -56,137 +59,130 @@ def convert_bibtex_to_ris(bib_content):
 
     match = regex.search(pattern, bib_content, regex.VERBOSE)
     if match:
-        entry_type = match.group(1)
-        id = match.group(2)
+        entry_type = match.group(1).lower().strip()
+        id = match.group(2).strip()
         entries = match.group(3)
 
-        print(f"Entries: {entries}\n\n")
+        # print(f"Entries: {entries}\n\n")
 
         field_matches = regex.finditer(separated_entries_pattern, entries, regex.VERBOSE)
     
         for match in field_matches:
             field_name = match.group(2).strip()  # nombre del campo
-            field_value = match.group(3).strip() # contenido entre llaves
+            field_value = match.group(4).strip() # contenido entre llaves
             separated_entries[field_name] = field_value
 
-        print(f"Separated entries: {separated_entries}")
-
+        # print(f"Separated entries: {separated_entries}")
         
-
-    # print(f"Tipo de entrada: {entry_type}")
-    # print(f"ID de la entrada: {id}")
-    # print(f"Entradas detectadas: {entries}")
-
-    return
-
-    # Variables que utilizaremos para almacenar la información de cada entrada
-    fields = {}
-    type_found = False # Bandera para saber si ya hemos encontrado el entry_type
-
-    for entry in entries:
-        # print(f"Procesando entrada: {entry}")
-
-        # Vemos si es entry_type o field
-        if (not type_found):
-            match = re.search(r"^(TY|ty|Ty|tY)\s*-\s*(.+)", entry)
-            type = None
-            if match:
-                type = match.group(2).strip().lower()
-
-            if type: # es un entry_type
-                entry_type = type
-                # print(f"Tipo de entrada detectado: {entry_type}")
-                type_found = True
-                continue
-        else: # es un field
-            match = re.search(r"([A-Z]{2}|[a-z]{2})\s*-\s*(.+)", entry)
-            if match:
-                field = match.group(1).strip().lower()
-                field_content = match.group(2).strip()
-
-                if field in fields:
-                    fields[field] += " and " + field_content
-                else:
-                    fields[field] = field_content
+    else:
+        print(f"{Fore.RED}No se encontraron entradas BibTeX válidas.")
+        return
     
-    # print(f"\n\nCampos recopilados:\n\n{fields}")
-
-    # Mapeo de tipos de entrada RIS a BibTeX
-    
-    ris_to_bibtex_type = {
-        "au" : "author",
-        "ti" : "title",
-        "py" : "year",
-        "vl" : "volume",
-        "is" : "number",
-        "sp" : "pages",
-        "ep" : "pages",
-        "do" : "doi",
-        "ur" : "url",
-        "pb" : "publisher",
-        "jo" : "journal",
-        "bt" : "booktitle",
-        "ed" : "editor",
-        "et" : "edition",
-        "kw" : "keywords",
-        "sn" : "issn",
-        "cy" : "address",
-        "pp" : "address",
-        "ab" : "abstract",
-        "id" : "id",
-        "jour": "article", #entry_type
-        "conf": "inproceedings", #entry_type
+    bibtex_to_ris_type = {
+        "author": "au",
+        "title": "ti",
+        "year": "py",
+        "volume": "vl",
+        "number": "is",
+        "pages": "sp",
+        "pages": "ep",
+        "doi": "do",
+        "url": "ur",
+        "publisher": "pb",
+        "journal": "jo",
+        "booktitle": "bt",
+        "editor": "ed",
+        "edition": "et",
+        "keywords": "kw",
+        "issn": "sn",
+        "address": "cy",
+        "address": "pp",
+        "abstract": "ab",
+        "id": "id",
+        "article": "jour", #entry_type
+        "inproceedings": "conf", #entry_type
     }
 
-    pages = "" #sp-ep
-    keywords = "" #kw
-    address = "" #cy, pp
+    sp = ""
+    ep = ""
+    kw = []
+    cy = ""
+    pp = ""
 
     # Formateamos los campos que contienen más de un elemento
-    for field, field_content in fields.items():
+    if(entry_type == "inproceedings"):
+        entry_type = "CONF"
+    elif(entry_type == "article"):
+        entry_type = "JOUR"
+
+    for field, field_content in separated_entries.items():
         #pages
-        if field == "sp":
-            pages += field_content
-        elif field == "ep":
-            pages += f"--{field_content}"
+        if field == "pages":
+            parts = re.split(r'-+', field_content)
+            if len(parts) == 2:
+                sp = parts[0].strip()
+                ep = parts[1].strip()
+            elif len(parts) == 1:
+                sp = parts[0].strip()
         #keywords
-        elif field == "kw":
-            if keywords:
-                keywords += f", {field_content.replace(' and', ', ')}"
-            else:
-                keywords += field_content
+        elif field == "keywords":
+            keywords = re.sub(r'\s*,\s*', ', ', field_content)
+            keywords = re.sub(r'\s*;\s*', '; ', keywords)
+            keywords = re.sub(r'\s+and\s+', ', ', keywords)
+            keywords = re.sub(r'\s+', ' ', keywords)
+            keywords = keywords.strip()
+            split_keywords = re.split(r',\s*|;\s*', keywords)
+
+            kw = [f"KW  - {k.strip()}" for k in split_keywords if k.strip()]
         #address
-        elif field == "cy" or field == "pp":
-            if address:
-                address += f", {field_content}"
-            else:
-                address += field_content
+        elif field == "address":
+            parts = re.split(r'\s*;?,?\/?\s*', field_content)
+            if len(parts) == 2:
+                cy = parts[0].strip()
+                pp = parts[1].strip()
+            elif len(parts) == 1:
+                cy = parts[0].strip()
+        #authors
+        elif field == "author":
+            authors = re.split(r'\s+and\s+', field_content)
+            authors = [a.strip() for a in authors if a.strip()]
+            separated_entries[field] = " and ".join(authors)
+        #editors
+        elif field == "editor":
+            editors = re.split(r'\s+and\s+', field_content)
+            editors = [e.strip() for e in editors if e.strip()]
+            separated_entries[field] = " and ".join(editors)
 
     # Construimos el archivo BibTeX
-    cite_key = fields.get('id', '')
-    if cite_key:
-        cite_key += ','
-    
-    # NOTA: Asumimos que siempre habrá un entry_type válido
-    bibtex_result = "@" + ris_to_bibtex_type.get(entry_type) + '{' + cite_key + "\n"
+    ris_result = "TY  - " + entry_type + "\n"
 
     # Añadimos los campos formateados
-    if pages and re.search(r'\d+--\d+', pages): # Evitamos que solo se ponga pagina de inicio o de fin
-        bibtex_result += f"pages = {{{pages}}},\n"
-    if keywords:
-        bibtex_result += f"keywords = {{{keywords}}},\n"
-    if address:
-        bibtex_result += f"address = {{{address}}},\n"
+    if id:
+        ris_result += f"ID  - {id}\n"
+    if sp and ep:
+        ris_result += f"SP  - {sp}\n"
+        ris_result += f"EP  - {ep}\n"
+    if kw:
+        ris_result += "\n".join(kw) + "\n"
+    if cy:
+        ris_result += f"CY  - {cy}\n"
+    if pp:
+        ris_result += f"PP  - {pp}\n"
 
     # Añadimos todos los demas campos
-    for key, content in fields.items():
-        if key in ris_to_bibtex_type and key != "id" and key != "ty" and key != "sp" and key != "ep" and key != "kw" and key != "cy" and key != "pp":
-            bibtex_key = ris_to_bibtex_type[key]
-            bibtex_result += f"{bibtex_key} = {{{content}}},\n"
+    for key, content in separated_entries.items():
+        if key in bibtex_to_ris_type and key != "id" and key != "article" and key != "inproceedings" and key != "pages" and key != "keywords" and key != "address":
+            ris_key = bibtex_to_ris_type[key]
+            
+            # Elimina saltos de línea y la coma final
+            clean_content = content.replace('\n', ' ').replace('\r', ' ').strip()
+            if clean_content.endswith(','):
+                clean_content = clean_content[:-1].strip()
+            ris_result += f"{ris_key.upper()}  - {clean_content}\n"
 
-    bibtex_result += "}"
+    ris_result += "ER  - \n"
 
-    print("\n\nConversión completada. ============================== \n\n")
-    # print(bibtex_result)
-    return bibtex_result
+    print(f"{Fore.GREEN}\n\nConversión completada. ============================== \n\n")
+
+    return ris_result
             
